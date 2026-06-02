@@ -51,43 +51,6 @@ Sonra DNS Filter profiline veya firewall policy'sine `external-resource` olarak 
 
 Security Policy veya DNS Security'de kullan.
 
-### Pi-hole
-
-```
-Settings → Adlists → Add a new adlist
-URL: https://usomfeeds.yunuskargi.com/domains.txt
-```
-
-### curl / wget (genel)
-
-```bash
-curl -o /etc/blocklists/usom-domains.txt https://usomfeeds.yunuskargi.com/domains.txt
-curl -o /etc/blocklists/usom-ips.txt     https://usomfeeds.yunuskargi.com/ips.txt
-```
-
-İndiren taraf `Last-Modified` / `ETag` header'larını destekliyorsa `If-Modified-Since` ile koşullu indirir; değişiklik yoksa bandwidth harcamaz.
-
-## Güncelleme döngüsü
-
-```
-USOM API güncellemesi
-       │ (en geç 1 saat — sunucu kendi yanıtını cache'liyor)
-       ▼
-Saatlik cron → API'den tam liste çekilir → R2'ye yazılır
-       │
-       ▼
-Cloudflare edge cache (1 saat)
-       │
-       ▼
-Sizin sisteminiz (refresh-rate 60 dk)
-```
-
-USOM bir kayıt eklediğinde / kaldırdığında feed'inize en geç **~2-3 saat** içinde yansır.
-
-## Güvenlik
-
-Pipeline her koşuda sanity check yapar: çekilen domain sayısı 1000'in, IP sayısı 100'ün altına düşerse build durdurulur ve R2'deki son sağlam dosyalar dokunulmaz. Upstream çökse veya API şeması değişse de mevcut feed servisi kesintisiz devam eder.
-
 ## Yasal
 
 - Kaynak: T.C. Siber Güvenlik Başkanlığı — <https://siberguvenlik.gov.tr>
