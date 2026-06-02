@@ -2,7 +2,8 @@ name: update-feeds
 
 on:
   schedule:
-    - cron: "17 * * * *"   # her saatin 17. dakikası (cron jitter; tepe dakikalarda yığılma olmasın)
+    # iki kez: GitHub Actions schedule best-effort, biri kaçırılsa diğeri yakalar
+    - cron: "13,43 * * * *"
   workflow_dispatch:
 
 concurrency:
