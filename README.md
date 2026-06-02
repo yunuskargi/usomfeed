@@ -1,6 +1,6 @@
-# usomfeed
+# USOM Zararlı Bağlantı Feed'i
 
-T.C. Siber Güvenlik Başkanlığı'nın (eski USOM) zararlı domain ve IP listesinin **FortiGate / Palo Alto / Squid / Pi-hole** gibi sistemlere doğrudan beslenebilecek düz metin (`.txt`) sürümü.
+T.C. Siber Güvenlik Başkanlığı'nın (eski USOM) zararlı domain ve IP listesinin **FortiGate / Palo Alto** gibi sistemlere doğrudan beslenebilecek düz metin (`.txt`) sürümü.
 
 USOM 1 Haziran 2026 itibarıyla eski [`url-list.txt`](https://www.usom.gov.tr/duyurular/zararli-baglantilar-listesinde-yapilacak-degisiklik-hakkinda) yayınını durdurdu, yerine paginated JSON API getirdi. Bu repo o API'yi her saat çekip eski txt formatını üreten bir köprü.
 
