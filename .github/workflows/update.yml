@@ -42,8 +42,15 @@ jobs:
           R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
+          # txt dosyaları → text/plain
           aws s3 sync ./out/ "s3://${R2_BUCKET}/" \
             --endpoint-url "$R2_ENDPOINT" \
-            --delete \
+            --exclude "*" --include "*.txt" --delete \
             --content-type "text/plain; charset=utf-8" \
+            --cache-control "public, max-age=3600"
+          # index.html → text/html
+          aws s3 sync ./out/ "s3://${R2_BUCKET}/" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --exclude "*" --include "*.html" --delete \
+            --content-type "text/html; charset=utf-8" \
             --cache-control "public, max-age=3600"

@@ -11,6 +11,8 @@ Full re-fetch every run. Incremental would miss removals from the upstream list.
 """
 from __future__ import annotations
 
+import datetime as dt
+import html
 import ipaddress
 import os
 import pathlib
@@ -139,7 +141,100 @@ def main() -> int:
         print(f"[fatal] ip count {n_ip} suspiciously low; aborting", file=sys.stderr)
         return 2
 
+    write_index(OUT_DIR / "index.html", n_dom, n_ip,
+                (OUT_DIR / "domains.txt").stat().st_size,
+                (OUT_DIR / "ips.txt").stat().st_size)
+    print("[ok] wrote index.html", file=sys.stderr)
+
     return 0
+
+
+def write_index(path: pathlib.Path, n_dom: int, n_ip: int, sz_dom: int, sz_ip: int) -> None:
+    updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    h = html.escape
+    body = f"""<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USOM Zararlı Bağlantı Feed'i</title>
+<meta name="description" content="T.C. Siber Güvenlik Başkanlığı zararlı domain ve IP listesinin FortiGate / Palo Alto uyumlu txt formatı.">
+<style>
+  :root {{
+    --bg: #0e1116; --fg: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --card: #161b22; --border: #30363d; --code: #1f242c;
+  }}
+  @media (prefers-color-scheme: light) {{
+    :root {{ --bg:#ffffff; --fg:#1f2328; --muted:#656d76; --accent:#0969da; --card:#f6f8fa; --border:#d0d7de; --code:#eff2f5; }}
+  }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin:0; font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--fg); }}
+  .wrap {{ max-width: 760px; margin: 0 auto; padding: 48px 24px; }}
+  h1 {{ margin: 0 0 8px; font-size: 28px; }}
+  .sub {{ color: var(--muted); margin: 0 0 32px; }}
+  .card {{ background:var(--card); border:1px solid var(--border); border-radius:8px; padding:20px; margin:16px 0; }}
+  .card h2 {{ margin:0 0 8px; font-size:18px; }}
+  .url {{ display:block; background:var(--code); padding:10px 12px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:14px; word-break:break-all; color:var(--accent); text-decoration:none; }}
+  .url:hover {{ text-decoration:underline; }}
+  .meta {{ color:var(--muted); font-size:13px; margin-top:10px; }}
+  pre {{ background:var(--code); padding:14px; border-radius:6px; overflow-x:auto; font-size:13px; }}
+  a {{ color:var(--accent); }}
+  hr {{ border:none; border-top:1px solid var(--border); margin:32px 0; }}
+  footer {{ color:var(--muted); font-size:13px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>USOM Zararlı Bağlantı Feed'i</h1>
+<p class="sub">T.C. Siber Güvenlik Başkanlığı zararlı domain ve IP listesinin FortiGate / Palo Alto uyumlu txt sürümü. Saatte bir güncellenir.</p>
+
+<div class="card">
+  <h2>domains.txt</h2>
+  <a class="url" href="/domains.txt">https://usomfeeds.yunuskargi.com/domains.txt</a>
+  <div class="meta">{n_dom:,} kayıt · {sz_dom/1024/1024:.2f} MB · alfabetik sıralı</div>
+</div>
+
+<div class="card">
+  <h2>ips.txt</h2>
+  <a class="url" href="/ips.txt">https://usomfeeds.yunuskargi.com/ips.txt</a>
+  <div class="meta">{n_ip:,} kayıt · {sz_ip/1024:.1f} KB · numeric sıralı (IPv4)</div>
+</div>
+
+<p class="sub" style="margin-top:24px">Son güncelleme: <strong>{h(updated)}</strong></p>
+
+<hr>
+
+<h2 style="font-size:18px">FortiGate</h2>
+<pre>config system external-resource
+    edit "usom-domains"
+        set type domain
+        set resource "https://usomfeeds.yunuskargi.com/domains.txt"
+        set refresh-rate 60
+    next
+    edit "usom-ips"
+        set type address
+        set resource "https://usomfeeds.yunuskargi.com/ips.txt"
+        set refresh-rate 60
+    next
+end</pre>
+
+<h2 style="font-size:18px">Palo Alto</h2>
+<p>Objects → External Dynamic Lists → Add → Type: <code>Domain List</code> / <code>IP List</code>, Source: yukarıdaki URL, Check for updates: <code>Hourly</code>.</p>
+
+<hr>
+
+<footer>
+  Kaynak: <a href="https://siberguvenlik.gov.tr/zararli-baglantilar">siberguvenlik.gov.tr</a> ·
+  Repo: <a href="https://github.com/yunuskargi/usomfeed">github.com/yunuskargi/usomfeed</a> ·
+  Resmi olmayan aynadır
+</footer>
+
+</div>
+</body>
+</html>
+"""
+    path.write_bytes(body.encode("utf-8"))
 
 
 if __name__ == "__main__":
