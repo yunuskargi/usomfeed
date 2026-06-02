@@ -154,108 +154,360 @@ INDEX_TEMPLATE = r"""<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>USOM Zararlı Bağlantı Feed'i</title>
+<title>USOM Feeds</title>
 <meta name="description" content="T.C. Siber Güvenlik Başkanlığı zararlı domain ve IP listesinin FortiGate / Palo Alto uyumlu txt formatı. Saatte bir güncellenir.">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <style>
   :root {
-    --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
-    --card:#161b22; --border:#30363d; --code:#0d1117; --code-border:#21262d;
-    --ok:#3fb950; --warn:#d29922; --err:#f85149;
+    --bg: #f4fbfa;            /* daha nötr soft mint */
+    --bg-elev: #ffffff;
+    --surface: rgba(15, 118, 110, 0.06);
+    --surface-hover: rgba(15, 118, 110, 0.12);
+    --border: rgba(15, 118, 110, 0.20);
+    --border-strong: rgba(15, 118, 110, 0.45);
+    --fg: #0f172a;            /* near-black, ~14:1 contrast on bg */
+    --fg-dim: #334155;        /* secondary text */
+    --muted: #475569;         /* tertiary text, hâlâ WCAG AA */
+    --accent: #0f766e;        /* readable teal — link/url için */
+    --accent-bright: #14b8a6; /* sadece large UI öğeleri (logo, tab bg) için */
+    --accent-deep: #115e59;
+    --glow: rgba(20, 184, 166, 0.28);
+    --ok: #059669;
+    --warn: #d97706;
+    --err: #dc2626;
   }
-  @media (prefers-color-scheme: light) {
-    :root { --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --accent:#0969da;
-            --card:#f6f8fa; --border:#d1d9e0; --code:#f6f8fa; --code-border:#d1d9e0;
-            --ok:#1a7f37; --warn:#9a6700; --err:#cf222e; }
-  }
+  /* force light scheme — dark sistem ayarı bile olsa light gösterir */
+  html { color-scheme: light; }
+
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0}
-  body{font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;background:var(--bg);color:var(--fg)}
-  .wrap{max-width:880px;margin:0 auto;padding:40px 20px 80px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
-  h1{margin:0;font-size:26px;letter-spacing:-.01em}
-  .sub{color:var(--muted);margin:0 0 28px}
-  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--border)}
-  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-  .pill.ok .dot{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+  html,body{margin:0;padding:0;overflow-x:hidden}
+  body{
+    font:15px/1.65 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Inter","SF Pro Text",system-ui,sans-serif;
+    color:var(--fg);
+    background:var(--bg);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    position:relative;
+  }
+  /* subtle background accents */
+  body::before, body::after {
+    content:"";
+    position:fixed;
+    width:550px; height:550px;
+    border-radius:50%;
+    filter:blur(130px);
+    z-index:0;
+    pointer-events:none;
+    opacity:.32;
+  }
+  body::before {
+    background:radial-gradient(circle, var(--accent) 0%, transparent 70%);
+    top:-150px; left:-150px;
+  }
+  body::after {
+    background:radial-gradient(circle, var(--accent-deep) 0%, transparent 70%);
+    bottom:-150px; right:-150px;
+  }
+
+  .wrap{
+    max-width:960px;
+    margin:0 auto;
+    padding:48px 24px 96px;
+    position:relative;
+    z-index:1;
+  }
+
+  /* hero */
+  .hero{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:24px;
+    flex-wrap:wrap;
+    margin-bottom:48px;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{
+    width:44px;height:44px;
+    border-radius:12px;
+    background:linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 32px var(--glow), inset 0 1px 0 rgba(255,255,255,.2);
+    flex-shrink:0;
+  }
+  .logo svg{width:24px;height:24px;color:#fff}
+  h1{
+    margin:0;
+    font-size:24px;
+    font-weight:700;
+    letter-spacing:-.02em;
+    color:var(--fg);
+  }
+  .tagline{color:var(--muted);font-size:13px;margin-top:2px}
+
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:12px;font-weight:600;
+    background:var(--surface);
+    border:1px solid var(--border);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+  .pill .dot{
+    width:8px;height:8px;
+    border-radius:50%;
+    background:var(--muted);
+    position:relative;
+  }
+  .pill.ok .dot{background:var(--ok)}
+  .pill.ok .dot::after{
+    content:"";
+    position:absolute;
+    inset:-2px;
+    border-radius:50%;
+    background:var(--ok);
+    opacity:.4;
+    animation:pulse 2s ease-in-out infinite;
+  }
   .pill.warn .dot{background:var(--warn)}
   .pill.err .dot{background:var(--err)}
+  @keyframes pulse{
+    0%,100%{transform:scale(1);opacity:.4}
+    50%{transform:scale(1.8);opacity:0}
+  }
 
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:24px 0}
-  .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
-  .stat .v{font-size:24px;font-weight:700;letter-spacing:-.02em}
-  .stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+  /* stats */
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:16px;
+    margin-bottom:32px;
+  }
+  .stat{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px 22px;
+    transition:transform .2s ease, border-color .2s ease;
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .stat:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+  .stat .v{
+    font-size:28px;font-weight:700;
+    letter-spacing:-.03em;
+    color:var(--fg);
+    line-height:1.1;
+  }
+  .stat .l{
+    color:var(--muted);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-top:8px;
+    font-weight:500;
+  }
 
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin:16px 0}
-  .card h2{margin:0 0 12px;font-size:16px}
-  .urlrow{display:flex;align-items:center;gap:8px;margin:8px 0}
-  .url{flex:1;background:var(--code);border:1px solid var(--code-border);padding:10px 12px;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;word-break:break-all;color:var(--accent);text-decoration:none;display:block}
-  .url:hover{text-decoration:underline}
-  .meta{color:var(--muted);font-size:12px;margin-top:6px}
+  /* cards */
+  .card{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:28px;
+    margin-bottom:20px;
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .card-title{
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:var(--accent-deep);
+    margin:0 0 18px;
+  }
 
-  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:-4px -4px 16px;padding:0 4px;overflow-x:auto}
-  .tab{background:none;border:none;color:var(--muted);padding:10px 14px;cursor:pointer;font-size:14px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit}
-  .tab:hover{color:var(--fg)}
-  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .feed-item{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 16px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    transition:all .2s ease;
+  }
+  .feed-item:hover{background:var(--surface-hover);border-color:var(--border-strong)}
+  .feed-item + .feed-item{margin-top:10px}
+  .feed-url{
+    flex:1;
+    font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:13px;
+    font-weight:500;
+    color:var(--accent-deep);
+    text-decoration:none;
+    word-break:break-all;
+    min-width:0;
+  }
+  .feed-url:hover{color:var(--accent)}
+  .feed-meta{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:6px;
+    padding-left:16px;
+  }
+
+  /* tabs */
+  .tabs{
+    display:flex;
+    gap:4px;
+    margin:-4px -4px 24px;
+    padding:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow-x:auto;
+  }
+  .tab{
+    background:none;border:none;
+    color:var(--muted);
+    padding:10px 18px;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    border-radius:8px;
+    white-space:nowrap;
+    font-family:inherit;
+    transition:all .2s ease;
+  }
+  .tab:hover{color:var(--fg-dim)}
+  .tab.active{
+    color:#fff;
+    background:var(--accent-deep);
+    box-shadow:0 4px 12px var(--glow);
+  }
   .panel{display:none}
-  .panel.active{display:block}
-  .panel p{margin:0 0 12px}
-  .panel ol{margin:0 0 12px;padding-left:20px}
-  .panel li{margin:6px 0}
+  .panel.active{display:block;animation:fadeIn .25s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .panel p{margin:0 0 14px}
+  .panel ol{margin:0 0 14px;padding-left:22px}
+  .panel li{margin:8px 0}
+  .panel li::marker{color:var(--accent)}
 
-  .code{position:relative}
-  .code pre{margin:0;background:var(--code);border:1px solid var(--code-border);border-radius:6px;padding:14px 14px;overflow-x:auto;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  .copy{position:absolute;top:8px;right:8px;background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:4px 8px;border-radius:5px;cursor:pointer;font-family:inherit;transition:all .15s}
-  .copy:hover{color:var(--fg);border-color:var(--accent)}
-  .copy.copied{color:var(--ok);border-color:var(--ok)}
+  /* code blocks */
+  .code{position:relative;margin:14px 0}
+  .code pre{
+    margin:0;
+    background:#f4fbfa;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px 18px;
+    overflow-x:auto;
+    font-size:13px;
+    font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:var(--fg);
+    line-height:1.7;
+  }
+  .copy{
+    position:absolute;
+    top:10px;right:10px;
+    background:#ffffff;
+    border:1px solid var(--border-strong);
+    color:var(--accent-deep);
+    font-size:11px;font-weight:700;
+    padding:6px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    font-family:inherit;
+    transition:all .15s ease;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+  }
+  .copy:hover{background:var(--surface);border-color:var(--accent)}
+  .copy.copied{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-  code{background:var(--code);padding:2px 6px;border-radius:4px;font-size:.92em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  a{color:var(--accent)}
-  hr{border:none;border-top:1px solid var(--border);margin:32px 0}
-  footer{color:var(--muted);font-size:12px;line-height:1.7}
+  /* inline copy on feed-item */
+  .feed-item .copy{position:static;flex-shrink:0}
+
+  code{
+    background:var(--surface);
+    border:1px solid var(--border);
+    padding:2px 7px;
+    border-radius:5px;
+    font-size:.9em;
+    font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:var(--accent-deep);
+  }
+
+  a{color:var(--accent);text-decoration:none}
+  a:hover{color:var(--accent-deep);text-decoration:underline}
+
+  footer{
+    margin-top:48px;
+    padding-top:24px;
+    border-top:1px solid var(--border);
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.8;
+  }
+  footer code{color:var(--muted);background:transparent;border:none;padding:0}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<header>
-  <h1>USOM Zararlı Bağlantı Feed'i</h1>
-  <span id="status" class="pill"><span class="dot"></span><span id="status-text">kontrol ediliyor…</span></span>
-</header>
-<p class="sub">T.C. Siber Güvenlik Başkanlığı'nın yayınladığı zararlı domain ve IP listesinin FortiGate / Palo Alto / Squid / Pi-hole gibi sistemlere doğrudan beslenebilecek <code>.txt</code> sürümü. Saatte bir güncellenir.</p>
-
-<div class="stats">
-  <div class="stat"><div class="v">__N_DOM__</div><div class="l">domain</div></div>
-  <div class="stat"><div class="v">__N_IP__</div><div class="l">IPv4</div></div>
-  <div class="stat"><div class="v">__SZ_TOTAL__</div><div class="l">toplam boyut</div></div>
-  <div class="stat"><div class="v" id="age">—</div><div class="l">son güncelleme</div></div>
-</div>
-
-<div class="card">
-  <h2>Feed URL'leri</h2>
-  <div class="urlrow">
-    <a class="url" href="/domains.txt">https://usomfeeds.yunuskargi.com/domains.txt</a>
-    <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
-  </div>
-  <div class="meta">__N_DOM__ kayıt · __SZ_DOM__ · alfabetik sıralı</div>
-  <div class="urlrow" style="margin-top:16px">
-    <a class="url" href="/ips.txt">https://usomfeeds.yunuskargi.com/ips.txt</a>
-    <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/ips.txt">kopyala</button>
-  </div>
-  <div class="meta">__N_IP__ kayıt · __SZ_IP__ · numeric sıralı (IPv4)</div>
-</div>
-
-<div class="card">
-  <h2>Entegrasyon</h2>
-  <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="forti">FortiGate</button>
-    <button class="tab" data-tab="palo">Palo Alto</button>
-    <button class="tab" data-tab="generic">Generic (curl)</button>
+  <div class="hero">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <circle cx="12" cy="12" r="5" opacity="0.5"/>
+          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+          <line x1="12" y1="12" x2="18.3" y2="5.7"/>
+          <circle cx="16.5" cy="8" r="1.1" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div>
+        <h1>USOM Feeds</h1>
+        <div class="tagline">Zararlı domain ve IP listesi · txt format</div>
+      </div>
+    </div>
+    <span id="status" class="pill"><span class="dot"></span><span id="status-text">kontrol ediliyor</span></span>
   </div>
 
-  <div class="panel active" id="panel-forti">
-    <p>SSH ile <code>External Block List</code> tanımla:</p>
-    <div class="code">
-      <button class="copy" data-copy-pre>kopyala</button>
+  <div class="stats">
+    <div class="stat"><div class="v">__N_DOM__</div><div class="l">Domain</div></div>
+    <div class="stat"><div class="v">__N_IP__</div><div class="l">IPv4 Adresi</div></div>
+    <div class="stat"><div class="v">__SZ_TOTAL__</div><div class="l">Toplam Boyut</div></div>
+    <div class="stat"><div class="v" id="age">—</div><div class="l">Son Güncelleme</div></div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Feed URL'leri</p>
+    <div class="feed-item">
+      <a class="feed-url" href="/domains.txt">usomfeeds.yunuskargi.com/domains.txt</a>
+      <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
+    </div>
+    <div class="feed-meta">__N_DOM__ kayıt · __SZ_DOM__ · alfabetik sıralı</div>
+    <div class="feed-item" style="margin-top:14px">
+      <a class="feed-url" href="/ips.txt">usomfeeds.yunuskargi.com/ips.txt</a>
+      <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/ips.txt">kopyala</button>
+    </div>
+    <div class="feed-meta">__N_IP__ kayıt · __SZ_IP__ · numeric sıralı (IPv4)</div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Entegrasyon</p>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="forti">FortiGate</button>
+      <button class="tab" data-tab="palo">Palo Alto</button>
+      <button class="tab" data-tab="generic">Generic (curl)</button>
+    </div>
+
+    <div class="panel active" id="panel-forti">
+      <p>FortiGate CLI'dan <strong>External Block List</strong> tanımla (GUI'de <em>System → Settings → CLI Console</em>):</p>
+      <div class="code">
+        <button class="copy" data-copy-pre>kopyala</button>
 <pre>config system external-resource
     edit "usom-domains"
         set type domain
@@ -268,53 +520,51 @@ INDEX_TEMPLATE = r"""<!doctype html>
         set refresh-rate 60
     next
 end</pre>
+      </div>
+      <p>Sonra bu resource'u <strong>DNS Filter profili</strong> veya <strong>Firewall Policy</strong>'sine ekle. GUI üzerinden: <em>Security Fabric → External Connectors → Create New → Threat Feeds</em>.</p>
     </div>
-    <p>Sonra bu resource'u <strong>DNS Filter profili</strong> veya <strong>Firewall Policy</strong>'sine ekle. GUI üzerinden: Security Fabric → External Connectors → Create New → Threat Feeds.</p>
-  </div>
 
-  <div class="panel" id="panel-palo">
-    <p>GUI üzerinden:</p>
-    <ol>
-      <li><strong>Objects → External Dynamic Lists → Add</strong></li>
-      <li><strong>Type:</strong> <code>Domain List</code> (domains.txt için) veya <code>IP List</code> (ips.txt için)</li>
-      <li><strong>Source:</strong>
-        <div class="code" style="margin:8px 0">
-          <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
-          <pre>https://usomfeeds.yunuskargi.com/domains.txt</pre>
-        </div>
-      </li>
-      <li><strong>Check for updates:</strong> <code>Hourly</code></li>
-      <li><strong>Commit</strong>, sonra Security Policy veya DNS Security profilinde kullan</li>
-    </ol>
-  </div>
+    <div class="panel" id="panel-palo">
+      <p>GUI üzerinden:</p>
+      <ol>
+        <li><strong>Objects → External Dynamic Lists → Add</strong></li>
+        <li><strong>Type:</strong> <code>Domain List</code> (domains.txt için) veya <code>IP List</code> (ips.txt için)</li>
+        <li>
+          <strong>Source:</strong>
+          <div class="code" style="margin:10px 0">
+            <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
+<pre>https://usomfeeds.yunuskargi.com/domains.txt</pre>
+          </div>
+        </li>
+        <li><strong>Check for updates:</strong> <code>Hourly</code></li>
+        <li><strong>Commit</strong>, sonra Security Policy veya DNS Security profilinde kullan</li>
+      </ol>
+    </div>
 
-  <div class="panel" id="panel-generic">
-    <p>Cron veya systemd timer ile saatlik indirme:</p>
-    <div class="code">
-      <button class="copy" data-copy-pre>kopyala</button>
+    <div class="panel" id="panel-generic">
+      <p>Cron veya systemd timer ile saatlik indirme:</p>
+      <div class="code">
+        <button class="copy" data-copy-pre>kopyala</button>
 <pre>curl -fsSL -o /etc/blocklists/usom-domains.txt \
   https://usomfeeds.yunuskargi.com/domains.txt
 curl -fsSL -o /etc/blocklists/usom-ips.txt \
   https://usomfeeds.yunuskargi.com/ips.txt</pre>
+      </div>
+      <p>İndiren taraf <code>Last-Modified</code> / <code>ETag</code> destekliyorsa koşullu indirir; değişiklik yoksa bandwidth harcamaz.</p>
     </div>
-    <p>İndiren taraf <code>Last-Modified</code> / <code>ETag</code> destekliyorsa koşullu indirir; değişiklik yoksa bandwidth harcamaz.</p>
   </div>
-</div>
 
-<hr>
-
-<footer>
-  Kaynak: <a href="https://siberguvenlik.gov.tr/zararli-baglantilar">siberguvenlik.gov.tr</a> ·
-  Repo: <a href="https://github.com/yunuskargi/usomfeed">github.com/yunuskargi/usomfeed</a> ·
-  Son build: <code>__UPDATED__</code><br>
-  Resmi olmayan bir aynadır. Veri olduğu gibi sunulur, doğruluk veya erişilebilirlik garantisi verilmez.
-</footer>
+  <footer>
+    Kaynak: <a href="https://siberguvenlik.gov.tr/zararli-baglantilar">siberguvenlik.gov.tr</a> ·
+    Repo: <a href="https://github.com/yunuskargi/usomfeed">github.com/yunuskargi/usomfeed</a> ·
+    Son build: <code>__UPDATED__</code><br>
+    Resmi olmayan bir aynadır. Veri olduğu gibi sunulur, doğruluk veya erişilebilirlik garantisi verilmez.
+  </footer>
 
 </div>
 
 <script>
 (function(){
-  // Tabs
   const tabs = document.querySelectorAll('.tab');
   const panels = document.querySelectorAll('.panel');
   tabs.forEach(t => t.addEventListener('click', () => {
@@ -324,7 +574,6 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   }));
 
-  // Copy buttons
   document.querySelectorAll('.copy').forEach(btn => {
     btn.addEventListener('click', async () => {
       let text = btn.dataset.copy;
@@ -341,7 +590,6 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
     });
   });
 
-  // Live freshness from Last-Modified header on domains.txt
   function formatAge(ms) {
     const m = Math.round(ms / 60000);
     if (m < 1) return 'az önce';
@@ -380,7 +628,8 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
 
 
 def write_index(path: pathlib.Path, n_dom: int, n_ip: int, sz_dom: int, sz_ip: int) -> None:
-    updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    tr_tz = dt.timezone(dt.timedelta(hours=3))  # Türkiye sabit UTC+3 (2016'dan beri DST yok)
+    updated = dt.datetime.now(tr_tz).strftime("%d.%m.%Y %H:%M TSİ")
     total_mb = (sz_dom + sz_ip) / 1024 / 1024
 
     def fmt_size(n: int) -> str:
