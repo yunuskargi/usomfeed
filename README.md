@@ -6,17 +6,11 @@ USOM 1 Haziran 2026 itibarıyla eski [`url-list.txt`](https://www.usom.gov.tr/du
 
 > **Resmi olmayan bir aynadır.** Otoritatif kaynak: <https://siberguvenlik.gov.tr/zararli-baglantilar>
 
-## Feed URL'leri
+## Feed
 
-```
-https://usomfeeds.yunuskargi.com/domains.txt
-https://usomfeeds.yunuskargi.com/ips.txt
-```
+<https://usomfeeds.yunuskargi.com/>
 
-- **domains.txt** — satır başına bir domain, alfabetik sıralı (~450.000 kayıt, ~10 MB)
-- **ips.txt** — satır başına bir IPv4, numeric sıralı (~14.000 kayıt, ~200 KB)
-- UTF-8, LF satır sonu, BOM yok
-- Saatte bir güncellenir, Cloudflare CDN üzerinden servis edilir
+Tıklayınca canlı durum, sayılar ve sunulan dosyaların listesini görürsünüz. UTF-8, LF satır sonu, BOM yok. Saatte bir güncellenir, Cloudflare CDN üzerinden servis edilir.
 
 ## Kullanım
 

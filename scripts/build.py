@@ -485,12 +485,12 @@ INDEX_TEMPLATE = r"""<!doctype html>
   <div class="card">
     <p class="card-title">Feed URL'leri</p>
     <div class="feed-item">
-      <a class="feed-url" href="/domains.txt">usomfeeds.yunuskargi.com/domains.txt</a>
+      <a class="feed-url" href="/domains.txt">https://usomfeeds.yunuskargi.com/domains.txt</a>
       <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
     </div>
     <div class="feed-meta">__N_DOM__ kayıt · __SZ_DOM__ · alfabetik sıralı</div>
     <div class="feed-item" style="margin-top:14px">
-      <a class="feed-url" href="/ips.txt">usomfeeds.yunuskargi.com/ips.txt</a>
+      <a class="feed-url" href="/ips.txt">https://usomfeeds.yunuskargi.com/ips.txt</a>
       <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/ips.txt">kopyala</button>
     </div>
     <div class="feed-meta">__N_IP__ kayıt · __SZ_IP__ · numeric sıralı (IPv4)</div>
