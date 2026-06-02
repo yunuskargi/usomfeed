@@ -1,0 +1,49 @@
+name: update-feeds
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # her saatin 17. dakikası (cron jitter; tepe dakikalarda yığılma olmasın)
+  workflow_dispatch:
+
+concurrency:
+  group: update-feeds
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install requests
+
+      - name: build feeds
+        run: python scripts/build.py
+
+      - name: verify outputs exist and are non-trivial
+        run: |
+          test -s out/domains.txt
+          test -s out/ips.txt
+          wc -l out/domains.txt out/ips.txt
+
+      - name: sync to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          aws s3 sync ./out/ "s3://${R2_BUCKET}/" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --delete \
+            --content-type "text/plain; charset=utf-8" \
+            --cache-control "public, max-age=300"
