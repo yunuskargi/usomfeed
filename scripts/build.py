@@ -29,7 +29,7 @@ MAX_RETRIES = 5
 OUT_DIR = pathlib.Path(__file__).resolve().parent.parent / "out"
 
 SESSION = requests.Session()
-SESSION.headers["User-Agent"] = "usomfeed-builder/1.0 (+github.com/your-org/usomfeed)"
+SESSION.headers["User-Agent"] = "usomfeed-builder/1.0 (+https://github.com/yunuskargi/usomfeed)"
 
 
 def fetch_page(addr_type: str, page: int) -> dict:

@@ -1,96 +1,98 @@
 # usomfeed
 
-T.C. Siber Güvenlik Başkanlığı'nın (eski USOM) yeni API'sinden zararlı domain ve IP listesini çekip Fortinet **External Block List** / Palo Alto **External Dynamic List** uyumlu düz metin (txt) feed'leri olarak üreten ve Cloudflare R2 üzerinden yayınlayan otomasyon.
+T.C. Siber Güvenlik Başkanlığı'nın (eski USOM) zararlı domain ve IP listesinin **FortiGate / Palo Alto / Squid / Pi-hole** gibi sistemlere doğrudan beslenebilecek düz metin (`.txt`) sürümü.
+
+USOM 1 Haziran 2026 itibarıyla eski [`url-list.txt`](https://www.usom.gov.tr/duyurular/zararli-baglantilar-listesinde-yapilacak-degisiklik-hakkinda) yayınını durdurdu, yerine paginated JSON API getirdi. Bu repo o API'yi her saat çekip eski txt formatını üreten bir köprü.
 
 > **Resmi olmayan bir aynadır.** Otoritatif kaynak: <https://siberguvenlik.gov.tr/zararli-baglantilar>
 
-## Ne yapıyor
-
-Saatte bir GitHub Actions koşusu:
-
-1. `https://siberguvenlik.gov.tr/api/address/index` API'sini `type=domain` ve `type=ip` için baştan sona çeker (`per-page=1000`, paralel sayfalama, retry/backoff).
-2. Çıktıları temizler/dedupe eder, sıralar:
-   - `out/domains.txt` — satır başına bir domain
-   - `out/ips.txt` — satır başına bir IPv4
-3. Cloudflare R2 bucket'ına `aws s3 sync --delete` ile yükler.
-4. Cloudflare custom domain üzerinden public olarak servis edilir.
-
-Tam yenileme yapılır (incremental değil) — upstream'den kaldırılan kayıtların feed'den de düşmesi için bu şart.
-
-## Kurulum
-
-### 1. Cloudflare R2
-
-1. Cloudflare hesabında **R2** → bucket oluştur (örn. `usom-feeds`).
-2. **R2 → Settings → Custom Domains** → kendi domain'inin alt domain'ini bağla (örn. `feeds.example.com`). DNS, SSL, CDN otomatik kurulur. `pub-xxx.r2.dev` public URL'ini production'da kullanma.
-3. **R2 → Manage API Tokens** → "Object Read & Write" izniyle, sadece bu bucket'a scope'lu yeni token oluştur. Açılan ekrandaki `Access Key ID`, `Secret Access Key` ve hesap sayfasındaki `Account ID` değerlerini sakla.
-
-### 2. GitHub Secrets
-
-Repo → Settings → Secrets and variables → Actions:
-
-| Secret | Değer |
-|---|---|
-| `R2_ACCOUNT_ID` | Cloudflare Account ID |
-| `R2_ACCESS_KEY_ID` | R2 API token Access Key |
-| `R2_SECRET_ACCESS_KEY` | R2 API token Secret |
-| `R2_BUCKET` | Bucket adı (örn. `usom-feeds`) |
-
-### 3. Workflow'u tetikle
-
-İlk koşuyu **Actions → update-feeds → Run workflow** ile manuel başlat. Sonrasında saatte bir otomatik çalışır.
-
-## Lokal test
-
-```bash
-pip install requests
-python scripts/build.py
-# out/domains.txt ve out/ips.txt üretilir
-wc -l out/*.txt
-```
-
-## Feed URL'leri (örnek)
+## Feed URL'leri
 
 ```
-https://feeds.example.com/domains.txt
-https://feeds.example.com/ips.txt
+https://usomfeeds.yunuskargi.com/domains.txt
+https://usomfeeds.yunuskargi.com/ips.txt
 ```
 
-### Fortinet (FortiGate External Block List)
+- **domains.txt** — satır başına bir domain, alfabetik sıralı (~450.000 kayıt, ~10 MB)
+- **ips.txt** — satır başına bir IPv4, numeric sıralı (~14.000 kayıt, ~200 KB)
+- UTF-8, LF satır sonu, BOM yok
+- Saatte bir güncellenir, Cloudflare CDN üzerinden servis edilir
+
+## Kullanım
+
+### FortiGate
 
 ```
 config system external-resource
     edit "usom-domains"
         set type domain
-        set resource "https://feeds.example.com/domains.txt"
+        set resource "https://usomfeeds.yunuskargi.com/domains.txt"
         set refresh-rate 60
     next
     edit "usom-ips"
         set type address
-        set resource "https://feeds.example.com/ips.txt"
+        set resource "https://usomfeeds.yunuskargi.com/ips.txt"
         set refresh-rate 60
     next
 end
 ```
 
-### Palo Alto (External Dynamic List)
+Sonra DNS Filter profiline veya firewall policy'sine `external-resource` olarak ekle.
 
-- **Objects → External Dynamic Lists → Add**
-- Type: `Domain List` (domains.txt) veya `IP List` (ips.txt)
-- Source: yukarıdaki URL'ler
-- Check for updates: `Hourly`
+### Palo Alto Networks
 
-## Performans / maliyet
+**Objects → External Dynamic Lists → Add**
 
-- Feed boyutu: toplam ~10 MB. R2 free tier'ı (10 GB storage, sınırsız egress) ile yıllarca ücretsiz çalışır.
-- Edge cache TTL 5 dk (workflow `cache-control: public, max-age=300` set ediyor). Cihazlar genelde saatte bir poll'lar, conditional GET (`If-Modified-Since`) destekler — değişiklik yoksa indirme yapılmaz.
+| Alan | Değer |
+|---|---|
+| Type | `Domain List` veya `IP List` |
+| Source | yukarıdaki ilgili URL |
+| Check for updates | `Hourly` |
+
+Security Policy veya DNS Security'de kullan.
+
+### Pi-hole
+
+```
+Settings → Adlists → Add a new adlist
+URL: https://usomfeeds.yunuskargi.com/domains.txt
+```
+
+### curl / wget (genel)
+
+```bash
+curl -o /etc/blocklists/usom-domains.txt https://usomfeeds.yunuskargi.com/domains.txt
+curl -o /etc/blocklists/usom-ips.txt     https://usomfeeds.yunuskargi.com/ips.txt
+```
+
+İndiren taraf `Last-Modified` / `ETag` header'larını destekliyorsa `If-Modified-Since` ile koşullu indirir; değişiklik yoksa bandwidth harcamaz.
+
+## Güncelleme döngüsü
+
+```
+USOM API güncellemesi
+       │ (en geç 1 saat — sunucu kendi yanıtını cache'liyor)
+       ▼
+Saatlik cron → API'den tam liste çekilir → R2'ye yazılır
+       │
+       ▼
+Cloudflare edge cache (1 saat)
+       │
+       ▼
+Sizin sisteminiz (refresh-rate 60 dk)
+```
+
+USOM bir kayıt eklediğinde / kaldırdığında feed'inize en geç **~2-3 saat** içinde yansır.
 
 ## Güvenlik
 
-Pipeline bir sanity check uygular: domain sayısı 1000'in, IP sayısı 100'ün altına düşerse build patlar ve R2'ye boş/yanlış dosya push'lanmaz. Upstream çöktüğünde firewall'larınızdaki son sağlam feed kalır.
+Pipeline her koşuda sanity check yapar: çekilen domain sayısı 1000'in, IP sayısı 100'ün altına düşerse build durdurulur ve R2'deki son sağlam dosyalar dokunulmaz. Upstream çökse veya API şeması değişse de mevcut feed servisi kesintisiz devam eder.
 
 ## Yasal
 
-- Kaynak: T.C. Siber Güvenlik Başkanlığı, <https://siberguvenlik.gov.tr>
-- API kullanım şartları: <https://siberguvenlik.gov.tr/yasal-uyarilar>
-- Bu repo resmi değildir, herhangi bir kuruma bağlı değildir. Veri olduğu gibi sunulur, doğruluk/erişilebilirlik garantisi verilmez.
+- Kaynak: T.C. Siber Güvenlik Başkanlığı — <https://siberguvenlik.gov.tr>
+- Resmi kullanım şartları: <https://siberguvenlik.gov.tr/yasal-uyarilar>
+- Bu repo bağımsız bir aynadır, herhangi bir kuruma bağlı değildir
+- Veri olduğu gibi sunulur, doğruluk veya erişilebilirlik garantisi verilmez
+
+Sorun bildirimi: <https://github.com/yunuskargi/usomfeed/issues>
