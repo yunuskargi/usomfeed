@@ -1,5 +1,7 @@
 name: update-feeds
 
+# Pipeline: fetch USOM API → write domains.txt, domains_critical.txt, ips.txt, index.html → sync to R2
+
 on:
   schedule:
     # iki kez: GitHub Actions schedule best-effort, biri kaçırılsa diğeri yakalar
