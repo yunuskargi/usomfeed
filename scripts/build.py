@@ -505,18 +505,18 @@ INDEX_TEMPLATE = r"""<!doctype html>
   <div class="card">
     <p class="card-title">Feed URL'leri</p>
     <div class="feed-item">
-      <a class="feed-url" href="/domains.txt">https://usomfeeds.yunuskargi.com/domains.txt</a>
-      <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
+      <a class="feed-url" href="/domains.txt">https://usomfeeds.dalnet.tr/domains.txt</a>
+      <button class="copy" data-copy="https://usomfeeds.dalnet.tr/domains.txt">kopyala</button>
     </div>
     <div class="feed-meta">Tam liste · __N_DOM__ kayıt · __SZ_DOM__</div>
     <div class="feed-item" style="margin-top:14px">
-      <a class="feed-url" href="/domains_critical.txt">https://usomfeeds.yunuskargi.com/domains_critical.txt</a>
-      <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains_critical.txt">kopyala</button>
+      <a class="feed-url" href="/domains_critical.txt">https://usomfeeds.dalnet.tr/domains_critical.txt</a>
+      <button class="copy" data-copy="https://usomfeeds.dalnet.tr/domains_critical.txt">kopyala</button>
     </div>
     <div class="feed-meta">Kritiklik ≥ 7 · __N_CRIT__ kayıt · __SZ_CRIT__ · cihaz limiti dar olanlar için</div>
     <div class="feed-item" style="margin-top:14px">
-      <a class="feed-url" href="/ips.txt">https://usomfeeds.yunuskargi.com/ips.txt</a>
-      <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/ips.txt">kopyala</button>
+      <a class="feed-url" href="/ips.txt">https://usomfeeds.dalnet.tr/ips.txt</a>
+      <button class="copy" data-copy="https://usomfeeds.dalnet.tr/ips.txt">kopyala</button>
     </div>
     <div class="feed-meta">__N_IP__ kayıt · __SZ_IP__ · IPv4, numeric sıralı</div>
   </div>
@@ -536,12 +536,12 @@ INDEX_TEMPLATE = r"""<!doctype html>
 <pre>config system external-resource
     edit "usom-domains"
         set type domain
-        set resource "https://usomfeeds.yunuskargi.com/domains.txt"
+        set resource "https://usomfeeds.dalnet.tr/domains.txt"
         set refresh-rate 60
     next
     edit "usom-ips"
         set type address
-        set resource "https://usomfeeds.yunuskargi.com/ips.txt"
+        set resource "https://usomfeeds.dalnet.tr/ips.txt"
         set refresh-rate 60
     next
 end</pre>
@@ -557,8 +557,8 @@ end</pre>
         <li>
           <strong>Source:</strong>
           <div class="code" style="margin:10px 0">
-            <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
-<pre>https://usomfeeds.yunuskargi.com/domains.txt</pre>
+            <button class="copy" data-copy="https://usomfeeds.dalnet.tr/domains.txt">kopyala</button>
+<pre>https://usomfeeds.dalnet.tr/domains.txt</pre>
           </div>
         </li>
         <li><strong>Check for updates:</strong> <code>Hourly</code></li>
@@ -571,9 +571,9 @@ end</pre>
       <div class="code">
         <button class="copy" data-copy-pre>kopyala</button>
 <pre>curl -fsSL -o /etc/blocklists/usom-domains.txt \
-  https://usomfeeds.yunuskargi.com/domains.txt
+  https://usomfeeds.dalnet.tr/domains.txt
 curl -fsSL -o /etc/blocklists/usom-ips.txt \
-  https://usomfeeds.yunuskargi.com/ips.txt</pre>
+  https://usomfeeds.dalnet.tr/ips.txt</pre>
       </div>
       <p>İndiren taraf <code>Last-Modified</code> / <code>ETag</code> destekliyorsa koşullu indirir; değişiklik yoksa bandwidth harcamaz.</p>
     </div>
