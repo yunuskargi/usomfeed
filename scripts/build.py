@@ -237,6 +237,18 @@ INDEX_TEMPLATE = r"""<!doctype html>
     z-index:1;
   }
 
+  /* brand bar */
+  .brandbar{
+    display:flex;
+    justify-content:center;
+    margin-bottom:32px;
+  }
+  .brandbar img{
+    height:48px;
+    width:auto;
+    display:block;
+  }
+
   /* hero */
   .hero{
     display:flex;
@@ -476,6 +488,10 @@ INDEX_TEMPLATE = r"""<!doctype html>
 <body>
 <div class="wrap">
 
+  <div class="brandbar">
+    <a href="https://www.dalnet.tr"><img src="https://www.dalnet.tr/wp-content/uploads/2023/03/logo.png" alt="Dalnet"></a>
+  </div>
+
   <div class="hero">
     <div class="brand">
       <div class="logo">
@@ -581,7 +597,7 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
 
   <footer>
     Kaynak: <a href="https://siberguvenlik.gov.tr/zararli-baglantilar">siberguvenlik.gov.tr</a> ·
-    Repo: <a href="https://github.com/yunuskargi/usomfeed">github.com/yunuskargi/usomfeed</a> ·
+    Repo: <a href="https://github.com/yunuskargi/usomfeed">GitHub</a> ·
     Son build: <code>__UPDATED__</code><br>
     Resmi olmayan bir aynadır. Veri olduğu gibi sunulur, doğruluk veya erişilebilirlik garantisi verilmez.
   </footer>

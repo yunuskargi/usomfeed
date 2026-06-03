@@ -8,7 +8,7 @@ USOM 1 Haziran 2026 itibarıyla eski [`url-list.txt`](https://www.usom.gov.tr/du
 
 ## Feed
 
-<https://usomfeeds.yunuskargi.com/>
+<https://usomfeeds.dalnet.tr/>
 
 Tıklayınca canlı durum, sayılar ve sunulan dosyaların listesini görürsünüz. UTF-8, LF satır sonu, BOM yok. Saatte bir güncellenir, Cloudflare CDN üzerinden servis edilir.
 
@@ -20,12 +20,12 @@ Tıklayınca canlı durum, sayılar ve sunulan dosyaların listesini görürsün
 config system external-resource
     edit "usom-domains"
         set type domain
-        set resource "https://usomfeeds.yunuskargi.com/domains.txt"
+        set resource "https://usomfeeds.dalnet.tr/domains.txt"
         set refresh-rate 60
     next
     edit "usom-ips"
         set type address
-        set resource "https://usomfeeds.yunuskargi.com/ips.txt"
+        set resource "https://usomfeeds.dalnet.tr/ips.txt"
         set refresh-rate 60
     next
 end
