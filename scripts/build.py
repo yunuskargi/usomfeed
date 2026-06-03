@@ -51,12 +51,13 @@ def fetch_page(addr_type: str, page: int) -> dict:
     raise AssertionError("unreachable")
 
 
-def fetch_all(addr_type: str) -> set[str]:
+def fetch_all(addr_type: str) -> dict[str, int]:
+    """Address → criticality_level (eğer aynı adres birden fazla sayfada gelirse en yükseğini tut)."""
     first = fetch_page(addr_type, 1)
     total = int(first.get("totalCount", 0))
     page_count = int(first.get("pageCount", 1))
-    entries: set[str] = set()
-    entries.update(_extract(first))
+    entries: dict[str, int] = {}
+    _merge(entries, first)
     print(f"[info] {addr_type}: totalCount={total} pageCount={page_count}", file=sys.stderr)
 
     if page_count <= 1:
@@ -68,35 +69,46 @@ def fetch_all(addr_type: str) -> set[str]:
         for fut in as_completed(futures):
             page = futures[fut]
             data = fut.result()
-            entries.update(_extract(data))
+            _merge(entries, data)
             if page % 25 == 0:
                 print(f"[info] {addr_type}: fetched page {page}/{page_count} (running unique={len(entries)})", file=sys.stderr)
 
     return entries
 
 
-def _extract(payload: dict) -> list[str]:
-    out = []
+def _merge(dest: dict[str, int], payload: dict) -> None:
     for m in payload.get("models", []) or []:
         v = (m.get("url") or "").strip().lower()
-        if v:
-            out.append(v)
-    return out
+        if not v:
+            continue
+        crit = int(m.get("criticality_level") or 0)
+        if crit > dest.get(v, 0):
+            dest[v] = crit
 
 
-def write_domains(entries: set[str], path: pathlib.Path) -> int:
+def _clean_host(d: str) -> str | None:
+    # upstream sometimes ships "www.foo.com/path" or "foo.com:8080"; trim to bare host
+    host = d.split("/", 1)[0].split(":", 1)[0].rstrip(".")
+    if host and "." in host and " " not in host:
+        return host
+    return None
+
+
+def write_domains(entries: dict[str, int], path: pathlib.Path,
+                  min_criticality: int = 0) -> int:
     cleaned: set[str] = set()
-    for d in entries:
-        # upstream sometimes ships "www.foo.com/path" or "foo.com:8080"; trim to bare host
-        host = d.split("/", 1)[0].split(":", 1)[0].rstrip(".")
-        if host and "." in host and " " not in host:
+    for d, crit in entries.items():
+        if crit < min_criticality:
+            continue
+        host = _clean_host(d)
+        if host:
             cleaned.add(host)
     return _write_sorted(cleaned, path)
 
 
-def write_ips(entries: set[str], path: pathlib.Path) -> int:
+def write_ips(entries: dict[str, int], path: pathlib.Path) -> int:
     cleaned: set[str] = set()
-    for v in entries:
+    for v in entries.keys():
         try:
             cleaned.add(str(ipaddress.IPv4Address(v)))
         except ValueError:
@@ -128,6 +140,10 @@ def main() -> int:
     n_dom = write_domains(domains, OUT_DIR / "domains.txt")
     print(f"[ok] wrote {n_dom} domains", file=sys.stderr)
 
+    n_crit = write_domains(domains, OUT_DIR / "domains_critical.txt",
+                           min_criticality=7)
+    print(f"[ok] wrote {n_crit} critical domains (level >= 7)", file=sys.stderr)
+
     print("[info] fetching ips...", file=sys.stderr)
     ips = fetch_all("ip")
     n_ip = write_ips(ips, OUT_DIR / "ips.txt")
@@ -140,10 +156,14 @@ def main() -> int:
     if n_ip < 100:
         print(f"[fatal] ip count {n_ip} suspiciously low; aborting", file=sys.stderr)
         return 2
+    if n_crit < 100:
+        print(f"[fatal] critical domain count {n_crit} suspiciously low; aborting", file=sys.stderr)
+        return 2
 
-    write_index(OUT_DIR / "index.html", n_dom, n_ip,
+    write_index(OUT_DIR / "index.html", n_dom, n_ip, n_crit,
                 (OUT_DIR / "domains.txt").stat().st_size,
-                (OUT_DIR / "ips.txt").stat().st_size)
+                (OUT_DIR / "ips.txt").stat().st_size,
+                (OUT_DIR / "domains_critical.txt").stat().st_size)
     print("[ok] wrote index.html", file=sys.stderr)
 
     return 0
@@ -477,8 +497,8 @@ INDEX_TEMPLATE = r"""<!doctype html>
 
   <div class="stats">
     <div class="stat"><div class="v">__N_DOM__</div><div class="l">Domain</div></div>
+    <div class="stat"><div class="v">__N_CRIT__</div><div class="l">Kritik Domain (≥7)</div></div>
     <div class="stat"><div class="v">__N_IP__</div><div class="l">IPv4 Adresi</div></div>
-    <div class="stat"><div class="v">__SZ_TOTAL__</div><div class="l">Toplam Boyut</div></div>
     <div class="stat"><div class="v" id="age">—</div><div class="l">Son Güncelleme</div></div>
   </div>
 
@@ -488,12 +508,17 @@ INDEX_TEMPLATE = r"""<!doctype html>
       <a class="feed-url" href="/domains.txt">https://usomfeeds.yunuskargi.com/domains.txt</a>
       <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains.txt">kopyala</button>
     </div>
-    <div class="feed-meta">__N_DOM__ kayıt · __SZ_DOM__ · alfabetik sıralı</div>
+    <div class="feed-meta">Tam liste · __N_DOM__ kayıt · __SZ_DOM__</div>
+    <div class="feed-item" style="margin-top:14px">
+      <a class="feed-url" href="/domains_critical.txt">https://usomfeeds.yunuskargi.com/domains_critical.txt</a>
+      <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/domains_critical.txt">kopyala</button>
+    </div>
+    <div class="feed-meta">Kritiklik ≥ 7 · __N_CRIT__ kayıt · __SZ_CRIT__ · cihaz limiti dar olanlar için</div>
     <div class="feed-item" style="margin-top:14px">
       <a class="feed-url" href="/ips.txt">https://usomfeeds.yunuskargi.com/ips.txt</a>
       <button class="copy" data-copy="https://usomfeeds.yunuskargi.com/ips.txt">kopyala</button>
     </div>
-    <div class="feed-meta">__N_IP__ kayıt · __SZ_IP__ · numeric sıralı (IPv4)</div>
+    <div class="feed-meta">__N_IP__ kayıt · __SZ_IP__ · IPv4, numeric sıralı</div>
   </div>
 
   <div class="card">
@@ -627,10 +652,10 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
 """
 
 
-def write_index(path: pathlib.Path, n_dom: int, n_ip: int, sz_dom: int, sz_ip: int) -> None:
+def write_index(path: pathlib.Path, n_dom: int, n_ip: int, n_crit: int,
+                sz_dom: int, sz_ip: int, sz_crit: int) -> None:
     tr_tz = dt.timezone(dt.timedelta(hours=3))  # Türkiye sabit UTC+3 (2016'dan beri DST yok)
     updated = dt.datetime.now(tr_tz).strftime("%d.%m.%Y %H:%M TSİ")
-    total_mb = (sz_dom + sz_ip) / 1024 / 1024
 
     def fmt_size(n: int) -> str:
         if n >= 1024 * 1024:
@@ -641,10 +666,11 @@ def write_index(path: pathlib.Path, n_dom: int, n_ip: int, sz_dom: int, sz_ip: i
 
     html_str = (INDEX_TEMPLATE
         .replace("__N_DOM__",   f"{n_dom:,}")
+        .replace("__N_CRIT__",  f"{n_crit:,}")
         .replace("__N_IP__",    f"{n_ip:,}")
         .replace("__SZ_DOM__",  fmt_size(sz_dom))
+        .replace("__SZ_CRIT__", fmt_size(sz_crit))
         .replace("__SZ_IP__",   fmt_size(sz_ip))
-        .replace("__SZ_TOTAL__", f"{total_mb:.1f} MB")
         .replace("__UPDATED__", html.escape(updated)))
     path.write_bytes(html_str.encode("utf-8"))
 
