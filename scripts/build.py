@@ -631,9 +631,9 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
     const txt  = document.getElementById('status-text');
     const ageEl = document.getElementById('age');
     pill.classList.remove('ok', 'warn', 'err');
-    if (ageH < 2)        { pill.classList.add('ok');   txt.textContent = 'çalışıyor'; }
-    else if (ageH < 24)  { pill.classList.add('warn'); txt.textContent = 'gecikme'; }
-    else                 { pill.classList.add('err');  txt.textContent = 'eski feed'; }
+    if (ageH < 2)        { pill.classList.add('ok');   txt.textContent = 'Güncel'; }
+    else if (ageH < 24)  { pill.classList.add('warn'); txt.textContent = 'Gecikme'; }
+    else                 { pill.classList.add('err');  txt.textContent = 'Eski'; }
     ageEl.textContent = formatAge(ageMs);
   }
   async function checkFreshness() {
