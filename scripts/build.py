@@ -244,7 +244,7 @@ INDEX_TEMPLATE = r"""<!doctype html>
     margin-bottom:32px;
   }
   .brandbar img{
-    height:48px;
+    height:72px;
     width:auto;
     display:block;
   }
