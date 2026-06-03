@@ -237,37 +237,22 @@ INDEX_TEMPLATE = r"""<!doctype html>
     z-index:1;
   }
 
-  /* brand bar */
-  .brandbar{
-    display:flex;
-    justify-content:center;
-    margin-bottom:32px;
-  }
-  .brandbar img{
-    height:72px;
-    width:auto;
-    display:block;
-  }
-
   /* hero */
   .hero{
     display:flex;
-    align-items:flex-start;
+    align-items:center;
     justify-content:space-between;
     gap:24px;
     flex-wrap:wrap;
     margin-bottom:48px;
   }
-  .brand{display:flex;align-items:center;gap:14px}
-  .logo{
-    width:44px;height:44px;
-    border-radius:12px;
-    background:linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 8px 32px var(--glow), inset 0 1px 0 rgba(255,255,255,.2);
+  .brand{display:flex;align-items:center;gap:18px}
+  .brand img{
+    height:56px;
+    width:auto;
+    display:block;
     flex-shrink:0;
   }
-  .logo svg{width:24px;height:24px;color:#fff}
   h1{
     margin:0;
     font-size:24px;
@@ -488,21 +473,9 @@ INDEX_TEMPLATE = r"""<!doctype html>
 <body>
 <div class="wrap">
 
-  <div class="brandbar">
-    <a href="https://www.dalnet.tr"><img src="https://www.dalnet.tr/wp-content/uploads/2023/03/logo.png" alt="Dalnet"></a>
-  </div>
-
   <div class="hero">
     <div class="brand">
-      <div class="logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <circle cx="12" cy="12" r="5" opacity="0.5"/>
-          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-          <line x1="12" y1="12" x2="18.3" y2="5.7"/>
-          <circle cx="16.5" cy="8" r="1.1" fill="currentColor" stroke="none"/>
-        </svg>
-      </div>
+      <a href="https://www.dalnet.tr"><img src="https://www.dalnet.tr/wp-content/uploads/2023/03/logo.png" alt="Dalnet"></a>
       <div>
         <h1>USOM Feeds</h1>
         <div class="tagline">Zararlı domain ve IP listesi · txt format</div>
