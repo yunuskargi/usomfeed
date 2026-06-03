@@ -255,12 +255,23 @@ INDEX_TEMPLATE = r"""<!doctype html>
   }
   h1{
     margin:0;
-    font-size:24px;
-    font-weight:700;
-    letter-spacing:-.02em;
+    font-size:32px;
+    font-weight:800;
+    letter-spacing:-.035em;
+    line-height:1.1;
     color:var(--fg);
   }
-  .tagline{color:var(--muted);font-size:13px;margin-top:2px}
+  h1 .accent{
+    color:var(--accent-deep);
+    font-weight:800;
+  }
+  .tagline{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:6px;
+    font-weight:500;
+    letter-spacing:.01em;
+  }
 
   .pill{
     display:inline-flex;align-items:center;gap:8px;
@@ -477,7 +488,7 @@ INDEX_TEMPLATE = r"""<!doctype html>
     <div class="brand">
       <a href="https://www.dalnet.tr"><img src="https://www.dalnet.tr/wp-content/uploads/2023/03/logo.png" alt="Dalnet"></a>
       <div>
-        <h1>USOM Feeds</h1>
+        <h1><span class="accent">USOM</span> Feeds</h1>
         <div class="tagline">Zararlı domain ve IP listesi · txt format</div>
       </div>
     </div>
