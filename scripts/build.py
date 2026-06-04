@@ -30,6 +30,13 @@ TIMEOUT = 30
 MAX_RETRIES = 5
 OUT_DIR = pathlib.Path(__file__).resolve().parent.parent / "out"
 
+# Global IP blocklist kaynakları — ips_global.txt için USOM ile birleştirilir, deduped
+EXTERNAL_IP_SOURCES = [
+    ("blocklist.de",     "https://lists.blocklist.de/lists/all.txt"),
+    ("GreenSnow",        "https://blocklist.greensnow.co/greensnow.txt"),
+    ("Emerging Threats", "https://rules.emergingthreats.net/blockrules/compromised-ips.txt"),
+]
+
 SESSION = requests.Session()
 SESSION.headers["User-Agent"] = "usomfeed-builder/1.0 (+https://github.com/yunuskargi/usomfeed)"
 
@@ -119,6 +126,46 @@ def write_ips(entries: dict[str, int], path: pathlib.Path) -> int:
     return len(sorted_ips)
 
 
+def fetch_external_ips() -> set[str]:
+    """Dış kaynak IP listelerinden valid IPv4'leri set olarak döner. Bir kaynak çökerse uyarı verir, geçer."""
+    out: set[str] = set()
+    for name, url in EXTERNAL_IP_SOURCES:
+        try:
+            r = SESSION.get(url, timeout=TIMEOUT)
+            r.raise_for_status()
+            added = 0
+            for line in r.text.splitlines():
+                line = line.strip()
+                if not line or line.startswith(("#", ";")):
+                    continue
+                # bazı kaynaklar "ip count" veya "ip\tcount" döner → ilk token'ı al
+                first = line.split()[0]
+                try:
+                    out.add(str(ipaddress.IPv4Address(first)))
+                    added += 1
+                except ValueError:
+                    continue
+            print(f"[ok] {name}: {added} ips", file=sys.stderr)
+        except Exception as e:
+            print(f"[warn] {name} failed: {e}", file=sys.stderr)
+    return out
+
+
+def write_global_ips(usom_ips: dict[str, int], external_ips: set[str],
+                     path: pathlib.Path) -> int:
+    """USOM + dış kaynakları birleştirip dedupe ile yazar."""
+    combined: set[str] = set()
+    for v in usom_ips.keys():
+        try:
+            combined.add(str(ipaddress.IPv4Address(v)))
+        except ValueError:
+            continue
+    combined |= external_ips
+    sorted_ips = sorted(combined, key=lambda x: int(ipaddress.IPv4Address(x)))
+    _write_lf(sorted_ips, path)
+    return len(sorted_ips)
+
+
 def _write_sorted(items: set[str], path: pathlib.Path) -> int:
     items_sorted = sorted(items)
     _write_lf(items_sorted, path)
@@ -149,6 +196,11 @@ def main() -> int:
     n_ip = write_ips(ips, OUT_DIR / "ips.txt")
     print(f"[ok] wrote {n_ip} ips", file=sys.stderr)
 
+    print("[info] fetching external ip blocklists...", file=sys.stderr)
+    external_ips = fetch_external_ips()
+    n_global = write_global_ips(ips, external_ips, OUT_DIR / "ips_global.txt")
+    print(f"[ok] wrote {n_global} ips (USOM + external, deduped)", file=sys.stderr)
+
     # sanity: refuse to publish a feed that suddenly collapsed (likely upstream outage)
     if n_dom < 1000:
         print(f"[fatal] domain count {n_dom} suspiciously low; aborting", file=sys.stderr)
@@ -159,11 +211,16 @@ def main() -> int:
     if n_crit < 100:
         print(f"[fatal] critical domain count {n_crit} suspiciously low; aborting", file=sys.stderr)
         return 2
+    if n_global < n_ip:
+        print(f"[fatal] global ip count {n_global} < usom {n_ip}; aborting", file=sys.stderr)
+        return 2
 
-    write_index(OUT_DIR / "index.html", n_dom, n_ip, n_crit,
+    write_index(OUT_DIR / "index.html",
+                n_dom, n_crit, n_ip, n_global,
                 (OUT_DIR / "domains.txt").stat().st_size,
+                (OUT_DIR / "domains_critical.txt").stat().st_size,
                 (OUT_DIR / "ips.txt").stat().st_size,
-                (OUT_DIR / "domains_critical.txt").stat().st_size)
+                (OUT_DIR / "ips_global.txt").stat().st_size)
     print("[ok] wrote index.html", file=sys.stderr)
 
     return 0
@@ -348,6 +405,74 @@ INDEX_TEMPLATE = r"""<!doctype html>
     backdrop-filter:blur(12px);
     -webkit-backdrop-filter:blur(12px);
   }
+  .feed-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:16px;
+  }
+  @media (max-width: 640px) {
+    .feed-grid{grid-template-columns:1fr;gap:12px;}
+  }
+  .feed-cell{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px 18px;
+    display:flex;
+    flex-direction:column;
+  }
+  .cell-title{
+    font-size:13px;
+    font-weight:700;
+    color:var(--accent-deep);
+    margin-bottom:10px;
+    letter-spacing:-.005em;
+  }
+  .cell-title .badge{
+    display:inline-block;
+    background:var(--accent);
+    color:#fff;
+    font-size:10px;
+    font-weight:700;
+    padding:2px 7px;
+    border-radius:4px;
+    margin-left:6px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    vertical-align:1px;
+  }
+  .feed-cell .feed-item{
+    background:var(--bg-elev);
+    border-color:var(--border-strong);
+  }
+  .feed-cell .feed-meta{padding-left:0;margin-top:8px;font-size:12px;line-height:1.5}
+  .sources{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:6px;
+    margin-top:10px;
+  }
+  .sources-label{
+    font-size:10px;
+    font-weight:700;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-right:2px;
+  }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    background:var(--bg-elev);
+    border:1px solid var(--border-strong);
+    color:var(--accent-deep);
+    font-size:11px;
+    font-weight:600;
+    padding:3px 10px;
+    border-radius:999px;
+    line-height:1.4;
+  }
   .card-title{
     font-size:11px;
     font-weight:700;
@@ -498,27 +623,72 @@ INDEX_TEMPLATE = r"""<!doctype html>
   <div class="stats">
     <div class="stat"><div class="v">__N_DOM__</div><div class="l">Domain</div></div>
     <div class="stat"><div class="v">__N_CRIT__</div><div class="l">Kritik Domain (≥7)</div></div>
-    <div class="stat"><div class="v">__N_IP__</div><div class="l">IPv4 Adresi</div></div>
+    <div class="stat"><div class="v">__N_IP__</div><div class="l">USOM IPv4</div></div>
+    <div class="stat"><div class="v">__N_GLOBAL__</div><div class="l">Global IPv4</div></div>
     <div class="stat"><div class="v" id="age">—</div><div class="l">Son Güncelleme</div></div>
   </div>
 
   <div class="card">
-    <p class="card-title">Feed URL'leri</p>
-    <div class="feed-item">
-      <a class="feed-url" href="/domains.txt">https://usomfeeds.dalnet.tr/domains.txt</a>
-      <button class="copy" data-copy="https://usomfeeds.dalnet.tr/domains.txt">kopyala</button>
+    <p class="card-title">Domain Listeleri</p>
+    <div class="feed-grid">
+      <div class="feed-cell">
+        <div class="cell-title">Tam Liste</div>
+        <div class="feed-item">
+          <a class="feed-url" href="/domains.txt">https://usomfeeds.dalnet.tr/domains.txt</a>
+          <button class="copy" data-copy="https://usomfeeds.dalnet.tr/domains.txt">kopyala</button>
+        </div>
+        <div class="feed-meta">__N_DOM__ kayıt · __SZ_DOM__ · alfabetik sıralı</div>
+        <div class="sources">
+          <span class="sources-label">Kaynak</span>
+          <a class="chip" href="https://siberguvenlik.gov.tr/zararli-baglantilar" target="_blank" rel="noopener">USOM</a>
+        </div>
+      </div>
+      <div class="feed-cell">
+        <div class="cell-title">Kritik <span class="badge">≥ 7</span></div>
+        <div class="feed-item">
+          <a class="feed-url" href="/domains_critical.txt">https://usomfeeds.dalnet.tr/domains_critical.txt</a>
+          <button class="copy" data-copy="https://usomfeeds.dalnet.tr/domains_critical.txt">kopyala</button>
+        </div>
+        <div class="feed-meta">__N_CRIT__ kayıt · __SZ_CRIT__ · kritiklik ≥ 7, cihaz satır limiti dar olanlar için</div>
+        <div class="sources">
+          <span class="sources-label">Kaynak</span>
+          <a class="chip" href="https://siberguvenlik.gov.tr/zararli-baglantilar" target="_blank" rel="noopener">USOM</a>
+        </div>
+      </div>
     </div>
-    <div class="feed-meta">Tam liste · __N_DOM__ kayıt · __SZ_DOM__</div>
-    <div class="feed-item" style="margin-top:14px">
-      <a class="feed-url" href="/domains_critical.txt">https://usomfeeds.dalnet.tr/domains_critical.txt</a>
-      <button class="copy" data-copy="https://usomfeeds.dalnet.tr/domains_critical.txt">kopyala</button>
+  </div>
+
+  <div class="card">
+    <p class="card-title">IPv4 Listeleri</p>
+    <div class="feed-grid">
+      <div class="feed-cell">
+        <div class="cell-title">USOM</div>
+        <div class="feed-item">
+          <a class="feed-url" href="/ips.txt">https://usomfeeds.dalnet.tr/ips.txt</a>
+          <button class="copy" data-copy="https://usomfeeds.dalnet.tr/ips.txt">kopyala</button>
+        </div>
+        <div class="feed-meta">__N_IP__ kayıt · __SZ_IP__ · numeric sıralı</div>
+        <div class="sources">
+          <span class="sources-label">Kaynak</span>
+          <a class="chip" href="https://siberguvenlik.gov.tr/zararli-baglantilar" target="_blank" rel="noopener">USOM</a>
+        </div>
+      </div>
+      <div class="feed-cell">
+        <div class="cell-title">Global <span class="badge">+3</span></div>
+        <div class="feed-item">
+          <a class="feed-url" href="/ips_global.txt">https://usomfeeds.dalnet.tr/ips_global.txt</a>
+          <button class="copy" data-copy="https://usomfeeds.dalnet.tr/ips_global.txt">kopyala</button>
+        </div>
+        <div class="feed-meta">__N_GLOBAL__ kayıt · __SZ_GLOBAL__ · mükerrer ayıklanmış</div>
+        <div class="sources">
+          <span class="sources-label">Kaynaklar</span>
+          <a class="chip" href="https://siberguvenlik.gov.tr/zararli-baglantilar" target="_blank" rel="noopener">USOM</a>
+          <a class="chip" href="https://www.blocklist.de" target="_blank" rel="noopener">blocklist.de</a>
+          <a class="chip" href="https://greensnow.co" target="_blank" rel="noopener">GreenSnow</a>
+          <a class="chip" href="https://rules.emergingthreats.net" target="_blank" rel="noopener">Emerging Threats</a>
+        </div>
+      </div>
     </div>
-    <div class="feed-meta">Kritiklik ≥ 7 · __N_CRIT__ kayıt · __SZ_CRIT__ · cihaz limiti dar olanlar için</div>
-    <div class="feed-item" style="margin-top:14px">
-      <a class="feed-url" href="/ips.txt">https://usomfeeds.dalnet.tr/ips.txt</a>
-      <button class="copy" data-copy="https://usomfeeds.dalnet.tr/ips.txt">kopyala</button>
-    </div>
-    <div class="feed-meta">__N_IP__ kayıt · __SZ_IP__ · IPv4, numeric sıralı</div>
   </div>
 
   <div class="card">
@@ -652,8 +822,9 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
 """
 
 
-def write_index(path: pathlib.Path, n_dom: int, n_ip: int, n_crit: int,
-                sz_dom: int, sz_ip: int, sz_crit: int) -> None:
+def write_index(path: pathlib.Path,
+                n_dom: int, n_crit: int, n_ip: int, n_global: int,
+                sz_dom: int, sz_crit: int, sz_ip: int, sz_global: int) -> None:
     tr_tz = dt.timezone(dt.timedelta(hours=3))  # Türkiye sabit UTC+3 (2016'dan beri DST yok)
     updated = dt.datetime.now(tr_tz).strftime("%d.%m.%Y %H:%M TSİ")
 
@@ -665,13 +836,15 @@ def write_index(path: pathlib.Path, n_dom: int, n_ip: int, n_crit: int,
         return f"{n} B"
 
     html_str = (INDEX_TEMPLATE
-        .replace("__N_DOM__",   f"{n_dom:,}")
-        .replace("__N_CRIT__",  f"{n_crit:,}")
-        .replace("__N_IP__",    f"{n_ip:,}")
-        .replace("__SZ_DOM__",  fmt_size(sz_dom))
-        .replace("__SZ_CRIT__", fmt_size(sz_crit))
-        .replace("__SZ_IP__",   fmt_size(sz_ip))
-        .replace("__UPDATED__", html.escape(updated)))
+        .replace("__N_DOM__",     f"{n_dom:,}")
+        .replace("__N_CRIT__",    f"{n_crit:,}")
+        .replace("__N_IP__",      f"{n_ip:,}")
+        .replace("__N_GLOBAL__",  f"{n_global:,}")
+        .replace("__SZ_DOM__",    fmt_size(sz_dom))
+        .replace("__SZ_CRIT__",   fmt_size(sz_crit))
+        .replace("__SZ_IP__",     fmt_size(sz_ip))
+        .replace("__SZ_GLOBAL__", fmt_size(sz_global))
+        .replace("__UPDATED__",   html.escape(updated)))
     path.write_bytes(html_str.encode("utf-8"))
 
 
