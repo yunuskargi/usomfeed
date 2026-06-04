@@ -346,6 +346,8 @@ INDEX_TEMPLATE = r"""<!doctype html>
     background:var(--muted);
     position:relative;
   }
+  .pill-sep{opacity:.5;margin:0 2px}
+  #age{font-weight:500;color:var(--muted)}
   .pill.ok .dot{background:var(--ok)}
   .pill.ok .dot::after{
     content:"";
@@ -617,7 +619,7 @@ INDEX_TEMPLATE = r"""<!doctype html>
         <div class="tagline">Zararlı domain ve IP listesi · txt format</div>
       </div>
     </div>
-    <span id="status" class="pill"><span class="dot"></span><span id="status-text">kontrol ediliyor</span></span>
+    <span id="status" class="pill"><span class="dot"></span><span id="status-text">kontrol ediliyor</span><span class="pill-sep" id="pill-sep" hidden>·</span><span id="age" hidden></span></span>
   </div>
 
   <div class="stats">
@@ -625,7 +627,6 @@ INDEX_TEMPLATE = r"""<!doctype html>
     <div class="stat"><div class="v">__N_CRIT__</div><div class="l">Kritik Domain (≥7)</div></div>
     <div class="stat"><div class="v">__N_IP__</div><div class="l">USOM IPv4</div></div>
     <div class="stat"><div class="v">__N_GLOBAL__</div><div class="l">Global IPv4</div></div>
-    <div class="stat"><div class="v" id="age">—</div><div class="l">Son Güncelleme</div></div>
   </div>
 
   <div class="card">
@@ -800,11 +801,14 @@ curl -fsSL -o /etc/blocklists/usom-ips.txt \
     const pill = document.getElementById('status');
     const txt  = document.getElementById('status-text');
     const ageEl = document.getElementById('age');
+    const sep  = document.getElementById('pill-sep');
     pill.classList.remove('ok', 'warn', 'err');
     if (ageH < 24)       { pill.classList.add('ok');   txt.textContent = 'Güncel'; }
     else if (ageH < 72)  { pill.classList.add('warn'); txt.textContent = 'Gecikme'; }
     else                 { pill.classList.add('err');  txt.textContent = 'Eski'; }
     ageEl.textContent = formatAge(ageMs);
+    sep.hidden = false;
+    ageEl.hidden = false;
   }
   async function checkFreshness() {
     try {
