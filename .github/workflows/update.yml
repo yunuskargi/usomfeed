@@ -58,10 +58,19 @@ jobs:
             --content-type "text/html; charset=utf-8" \
             --cache-control "public, max-age=3600"
 
-      - name: keepalive commit
-        # 60 günde bir push activity yoksa GitHub schedule cron'u devre dışı bırakır.
-        # Her koşuda status dosyasını güncelleyip commit atarak sayacı sıfır tutuyoruz.
+      - name: keepalive commit (weekly)
+        # 60 günde bir push aktivitesi yoksa GitHub schedule cron'u devre dışı bırakır.
+        # Haftada 1 kez (Pazartesi ilk koşu) status dosyasını güncelleyip commit atıyoruz.
+        # Yılda ~52 commit → repo history temiz, 60-gün sayacı asla dolmaz.
+        if: github.event_name == 'schedule'
         run: |
+          # Sadece Pazartesi ve saat 00-01 arası tetiklenirse commit at
+          dow=$(date -u +%u)   # 1=Pzt
+          hour=$(date -u +%H)
+          if [ "$dow" != "1" ] || [ "$hour" -gt "1" ]; then
+            echo "keepalive skipped (dow=$dow hour=$hour, only Mon 00-01 UTC pushes)"
+            exit 0
+          fi
           mkdir -p .github
           {
             echo "{"
@@ -75,6 +84,10 @@ jobs:
           git config user.name "usomfeed-bot"
           git config user.email "actions@users.noreply.github.com"
           git add .github/last_run.json
+          if git diff --cached --quiet; then
+            echo "no changes to commit"
+            exit 0
+          fi
           git commit -m "chore: keepalive $(date -u +%Y-%m-%d)"
           git pull --rebase --autostash origin main
           git push
