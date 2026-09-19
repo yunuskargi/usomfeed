@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write  # keepalive commit için (aşağıda) — 60-gün schedule disable koruması
     steps:
       - uses: actions/checkout@v4
 
@@ -57,3 +57,24 @@ jobs:
             --exclude "*" --include "*.html" --delete \
             --content-type "text/html; charset=utf-8" \
             --cache-control "public, max-age=3600"
+
+      - name: keepalive commit
+        # 60 günde bir push activity yoksa GitHub schedule cron'u devre dışı bırakır.
+        # Her koşuda status dosyasını güncelleyip commit atarak sayacı sıfır tutuyoruz.
+        run: |
+          mkdir -p .github
+          {
+            echo "{"
+            echo "  \"last_run\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+            echo "  \"domains\": $(wc -l < out/domains.txt),"
+            echo "  \"domains_critical\": $(wc -l < out/domains_critical.txt),"
+            echo "  \"ips\": $(wc -l < out/ips.txt),"
+            echo "  \"ips_global\": $(wc -l < out/ips_global.txt)"
+            echo "}"
+          } > .github/last_run.json
+          git config user.name "usomfeed-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/last_run.json
+          git commit -m "chore: keepalive $(date -u +%Y-%m-%d)"
+          git pull --rebase --autostash origin main
+          git push
